@@ -3,7 +3,7 @@ ARMGNU ?= arm-none-eabi
 
 COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding 
 
-all : blinker02.bin toarm.elf
+all : blinker03.bin toarm.elf
 
 clean :
 	rm -f *.o
@@ -19,13 +19,13 @@ toarm.elf : toarm.s memmap
 novectors.o : novectors.s
 	$(ARMGNU)-as novectors.s -o novectors.o
 
-blinker02.o : blinker02.c
-	$(ARMGNU)-gcc $(COPS) -c blinker02.c -o blinker02.o
+blinker03.o : blinker03.c
+	$(ARMGNU)-gcc $(COPS) -c blinker03.c -o blinker03.o
 
-blinker02.bin : memmap novectors.o blinker02.o 
-	$(ARMGNU)-ld novectors.o blinker02.o -T memmap -o blinker02.elf
-	$(ARMGNU)-objdump -D blinker02.elf > blinker02.list
-	$(ARMGNU)-objcopy blinker02.elf -O binary blinker02.bin 
+blinker03.bin : memmap novectors.o blinker03.o 
+	$(ARMGNU)-ld novectors.o blinker03.o -T memmap -o blinker03.elf
+	$(ARMGNU)-objdump -D blinker03.elf > blinker03.list
+	$(ARMGNU)-objcopy blinker03.elf -O binary blinker03.bin 
 
 
 
