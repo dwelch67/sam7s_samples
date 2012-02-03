@@ -59,6 +59,17 @@ void clock_init ( void )
 
 
 //-------------------------------------------------------------------------
+void dowait ( void )
+{
+    //unsigned int ra;
+
+    //for(ra=0;ra<100;ra++)
+    {
+        while((GET32(TC0_CV)&0x8000)==0x0000) continue;
+        while((GET32(TC0_CV)&0x8000)==0x8000) continue;
+    }
+}
+//-------------------------------------------------------------------------
 int notmain ( void )
 {
     unsigned int ra;
@@ -67,6 +78,7 @@ int notmain ( void )
 
     PUT32(PMC_PCER,1<<TC0_ID);
     PUT32(TC_BMR,1);
+    PUT32(TC0_CMR,4);
     PUT32(TC0_IDR,0xFF);
     PUT32(TC0_CCR,5);
 
@@ -77,10 +89,18 @@ int notmain ( void )
     while(1)
     {
         PUT32(PIO_CODR,1<<LED_BIT); //write 0 led on
-        for(ra=0;ra<0x30000;ra++) dummy();
+        dowait();
+        //for(ra=0;ra<0x30000;ra++) dummy();
         PUT32(PIO_SODR,1<<LED_BIT); //write 0 led off
-        for(ra=0;ra<0x30000;ra++) dummy();
+        dowait();
+        //for(ra=0;ra<0x30000;ra++) dummy();
     }
+
+    //starting with 18432000 Hz
+    //using 18432000/1024 = 18000
+    //16 bit counter 65536/18000 = 3.641 seconds
+    //led should change state somewhere between 3 and 4 seconds, which
+    //it does, so we are using the 18432000 hz clock
 
     return(0);
 }
