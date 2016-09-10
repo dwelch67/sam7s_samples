@@ -1,9 +1,10 @@
 
+#ARMGNU=arm-none-linux-gnueabi
 ARMGNU ?= arm-none-eabi
 
 COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding 
 
-all : uart01.bin toarm.elf
+all : uart01.sram.bin uart01.flash.bin
 
 clean :
 	rm -f *.o
@@ -11,24 +12,21 @@ clean :
 	rm -f *.elf
 	rm -f *.list
 
-toarm.elf : toarm.s memmap
-	$(ARMGNU)-as toarm.s -o toarm.o
-	$(ARMGNU)-ld -T memmap toarm.o -o toarm.elf
-	$(ARMGNU)-objdump -D toarm.elf > toarm.list
-
 novectors.o : novectors.s
 	$(ARMGNU)-as novectors.s -o novectors.o
 
 uart01.o : uart01.c
 	$(ARMGNU)-gcc $(COPS) -c uart01.c -o uart01.o
 
-uart01.bin : memmap novectors.o uart01.o 
-	$(ARMGNU)-ld novectors.o uart01.o -T memmap -o uart01.elf
-	$(ARMGNU)-objdump -D uart01.elf > uart01.list
-	$(ARMGNU)-objcopy uart01.elf -O binary uart01.bin 
+uart01.sram.bin : novectors.o uart01.o    sram.ld
+	$(ARMGNU)-ld  novectors.o uart01.o -T sram.ld -o uart01.sram.elf
+	$(ARMGNU)-objdump -D uart01.sram.elf > uart01.sram.list
+	$(ARMGNU)-objcopy uart01.sram.elf uart01.sram.bin -O binary
 
-
-
+uart01.flash.bin : novectors.o uart01.o    flash.ld
+	$(ARMGNU)-ld   novectors.o uart01.o -T flash.ld -o uart01.flash.elf
+	$(ARMGNU)-objdump -D uart01.flash.elf > uart01.flash.list
+	$(ARMGNU)-objcopy uart01.flash.elf uart01.flash.bin -O binary
 
 
 

@@ -1,0 +1,198 @@
+
+This is one of my first ARM based microcontrollers to use.  Revisiting
+it now many years later, tons more experience, this code only worked
+through dumb luck, actually not sure how it worked at all.
+
+At the time $50 for a microcontroller board was a steal, now you can
+get cortex-m based boards that can even run faster for $5 to $10
+or $20 on the expensive end.  And those include a usb based debugger
+on it as well as the target microcontroller.
+
+I started with the OLIMEX, bought a number of OLIMEX boards back then
+now there is an ebay board that works as well, simlar but in the $10
+to $15 range, you just have to wait a couple or few weeks for shipping.
+
+I am refactoring this because it is a true 32 bit ARM core it is
+the ARM7TDMI which put ARM on the map, not a thumb only cortex-m thing
+and not a made for linux beaglebone or raspberry pi (which dont have
+as easy of a way to get jtag on them, although you can).  So you can
+experience ARM style booting and the classic instruction set as well
+as the first thumb instruciton set (the only universally supported
+instruction set across all subsequent ARM cores).
+
+OLIMEX has a SAM7-H256 or H128 or H64.  Just a difference in amount
+of flash.  Sparkfun still has them for 50 bucks
+
+Pinout from olimex docs, I think the two PA29 pins are a typo.
+
+PA1   PA0                 gnd     NRST
+PA3   PA2                 5v-usb  3.3V
+PA5   PA4                 AD5     AD6
+PA7   PA6                 ADREF   AD4
+PA9   PA8                 PA30    PA31
+PA11  PA10                PA29    PA29 (PA28?)
+PA13  PA12                PA26    PA27
+PA15  PA14                PA24    PA25
+PA17  PA16                PA22    PA23
+PA19  PA18                PA20    PA21
+
+
+Cheap ebay board
+Search for: AT91SAM7S64 board
+Something like 11 bucks
+
+Pinout maybe correct or not, done from visual inspection:
+
+left side (usb up jtag down)
+
+1                  2
+3                  4
+5   pin 3   AD4    6   pin 4   AD5
+7   pin 5   AD8    8   pin 6   AD7
+9   pin 9   PA17   10  pin 10  PA18
+11  pin 11  PA21   12  pin 13  PA19
+13  pin 14  PA22   14  pin 15  PA23
+15  pin 16  PA20   16  pin 19  PA16
+17  pin 20  PA15   18  pin 21  PA14
+19  pin 22  PA13   20  pin 23  PA24
+
+right side (usb up jtag down)
+
+1   pin 48  PA0    2   pin 47 PA1
+3   pin 44  PA2    4   pin 43 PA3
+5   pin 42  PA30   6   pin 41 PA29
+7   pin 38  PA28   8   pin 37 PA27
+9   pin 36  PA4    10  pin 35 PA5
+11  pin 34  PA6    12
+13  pin 32  PA7    14  pin 31  PA8
+15  pin 30  PA9    16  pin 29  PA10
+17  pin 28  PA11   18  pin 27  PA12
+19  pin 26  PA26   20  pin 25  PA25
+
+
+Olimex has an led on PA8.  ebay board no led.
+
+Olimex board can put the test jumper on and it either gives you
+sam-ba (need to check) or something not your program, is the test
+pin on the chip.  Gets you out of trouble if your flash image hangs
+the chip.  Once you recover the user flash (0x00100000 see below)
+then you can remove the test jumper and run your application from flash.
+
+The cheap ebay board, it appears what you want to do (to recover) is put
+the jumper on the upper two pins (usb connector is up) on the right
+side (left side is power dont want a jumper there).  Unplug then
+replug power.  Use jtag to program the flash.  Unplug power BEFORE
+powering again, move the jumper down.  It appears that powering up
+with the jumper on boots into something that linux can tolerate,
+it also overwrites the user flash area with some program, one that
+linux currently does not tolerate.  And you have to power cycle not
+reset it appears.  Unplug, jumper up, power on, jtag to put a program
+on flash, power off, jumper down, power on.
+
+Jtag wigglers, this is an ARM7 with the 20 pin header, note half the
+pins one whole side are ground a bit overkill.  It is not the wee
+bitty cortex-m3 cable, some like the j-link in theory can do both
+the arm7, arm9, arm11 and so on as well as the cortex-m, there are
+a number of new ones that are cortex-m only, so be careful.  Ideally
+you just want an ftdi part with mpsse support (FT2232, FT4232, etc
+not to be confused with FT232 which doesnt) usb on one end and the
+jtag signals on the other.  No reason why there arent $10 versions
+of those out there, but there arent.  I wish I would just get out
+there make that board and have a zillion made to lower the per
+unit cost.
+
+www.amontec.com appears to be no more.  I have/use the jtagkey tiny
+Was not too expensive the shipping was the big killer.
+
+An FT2232H MINI MODULE will work, need to change the interface file
+and you need to put some jumpers on the board to power VDDIO as well
+as get your pins right to the sam7s board.  Inexpesive and works but
+you have to wire it up right.  This is where I should start make an
+adapter to this module, with the 20 pin header on it.
+
+Ebay appears to have j-link v8 modules for like $11 plus shipping,
+going to try those.  Normally costs hundreds, the educational one
+is like $80, so these are maybe clones or maybe real, who knows.
+Use the jlink.cfg file instead of jtagkey.cfg
+
+the amontec
+openocd -f jtagkey-tiny.cfg -f at91sam7sx.cfg
+or with the j-link
+openocd -f jtagkey-tiny.cfg -f at91sam7sx.cfg
+
+in another terminal
+
+telnet localhost 4444
+
+Open On-Chip Debugger
+>
+
+From the > prompt
+
+halt
+flash erase_address unlock 0x00100000 0x4000
+flash write_image nowdt/nowdt.hex
+
+It took hours to figure out that the reason why my led was not blinking
+at the right rate is because I wasnt actually changing over to the
+crystal based clock.  It wasnt hanging or crashing, so I figured the
+clocks were working.  Well crystal only was hanging, pll wasnt so
+was mislead thinking the pll was working.  It was always using the
+internal RC oscillator.  Thought the china boards were bad but then
+managed to put my olimex board in the same state.  Solution was to
+write something, that doesnt crash, to the flash.  I thought that it
+was disablilng the WDT right away using a flash based program, but it
+was just having control over the program that boots that gives the
+ability to program the clocks as desired.
+
+I dont know if the ebay boards actually have a SAM-BA serial based
+image maybe they are jtag only.  The olimex does/should and can
+be programmed from a serial port if you dont have jtag.  I would get
+jtag if you dont have one anyway, but for this board it may be the
+only interface I support.  Atmel is now microchip which I cut my
+teeth on but am not a fan of anymore.  Atmel yes, so hopefully that
+doesnt hurt them.  The new samd21 cortex-m based microcontrollers
+no longer have SAM-BA burned in in a place where you cant easily
+screw it up, they give you a bootloader but you can easily trash that
+so you really have to use jtag, or make your own much simpler bootloader
+and not bother with theirs...So I dont have much interest in making
+my own SAM-BA loader nor using an existing one...
+
+For running these programs the sram version instead of flash
+commands you telnet in
+
+Open On-Chip Debugger
+> halt
+> load_image /path/to/program.elf
+> resume 0x00200000
+
+And it will run, so long as you dont crash anything you can repeat
+those three steps without resetting nor power cycling the board.
+Understand that if you dont reset nor power cycle whatever a prior
+program touched or changed is still touched or changed.  So if/when
+you run your new program from a clean power cycle it may not run
+the same as it relied on something left behind from a prior program.
+
+I can sometimes get combinations of pressing the reset button,
+halt, resume, halt commands to actually reset and run, but cant nail
+down a repeatable set of commands, so sometimes you just have to
+pull the power and restart openocd and the telnet session.
+
+You can burn the flash versions of the program as the nowdt program
+is burned.  The primary difference between the sram and flash versions
+is where they live in address space which for small programs might
+not matter but eventually a hardcoded address is programmed in and
+you have to be in the right space.  I specifically used a .hex file
+for the nowdt above, as I am leaving that file in the repo in case
+you cant build right away or are not using the same toolchain.  The
+rest use the .elf
+
+Open On-Chip Debugger
+>halt
+>flash erase_address unlock 0x00100000 0x4000
+>flash write_image /path/to/program.elf
+
+Note you might need to erase more than that one page
+
+I think these examples only support the SAM7S64/128/256 primarily using
+the SAM7S64 ebay board, not going to run out and buy all the flavors.
